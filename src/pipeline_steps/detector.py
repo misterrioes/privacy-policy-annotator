@@ -77,7 +77,7 @@ class Detector(PipelineStep):
             await self.state_manager.update_state(file_progress=0.5)
         except Exception as e:
             await self.state_manager.raise_error(error_message=str(e))
-            util.write_to_file(f"../../output/{self.run_id}/log/failed_detect.txt", pkg) #TODO: replace with logger
+            util.write_to_file(f"../output/{self.run_id}/log/failed_detect.txt", pkg) #TODO: replace with logger
             return None
 
 

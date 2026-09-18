@@ -263,7 +263,7 @@ class Reviewer(PipelineStep):
 
         except Exception as e:
             await self.state_manager.raise_error(error_message=str(e))
-            util.write_to_file(f"../../output/{self.run_id}/log/failed_review.txt", pkg)
+            util.write_to_file(f"../output/{self.run_id}/log/failed_review.txt", pkg)
             return None
 
 

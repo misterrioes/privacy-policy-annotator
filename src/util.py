@@ -26,22 +26,28 @@ def _detect_encoding(file_path: str) -> str:
 
 def write_to_file(file_name: str, text: str):
     """
-    Writes text to a file, creating the file if it does not exist.
+    Writes text to a file, creating the file and all parent directories if they do not exist.
     Args:
         file_name (str): The name of the file to write to.
         text (str): The text to write to the file.
     """
+    parent_dir = os.path.dirname(file_name)
+    if parent_dir and not os.path.exists(parent_dir):
+        os.makedirs(parent_dir, exist_ok=True)
     with open(file_name, 'w', encoding='utf-8') as file:
         file.write(text)
 
 
 def append_to_file(file_name: str, text: str):
     """
-    Appends text to a file, creating the file if it does not exist.
+    Appends text to a file, creating the file and parent directories if they do not exist.
     Args:
         file_name (str): The name of the file to append to.
         text (str): The text to append to the file.
     """
+    parent_dir = os.path.dirname(file_name)
+    if parent_dir and not os.path.exists(parent_dir):
+        os.makedirs(parent_dir, exist_ok=True)
     if os.path.exists(file_name):
         encoding = _detect_encoding(file_name)
     else:
@@ -85,11 +91,13 @@ def read_json_file(file_path: str):
         return json.load(file)
 
 
-def prepare_output(run_id: str, output_folder: str = '../../output', overwrite: bool = False):
+def prepare_output(run_id: str, output_folder: str = '../output', overwrite: bool = False):
     if overwrite and os.path.exists('output'):
         shutil.rmtree('output')
 
-    path_list = [
+    # Build a superset of all directories the pipeline might need.
+    # Using makedirs (not just mkdir) so intermediate paths are created automatically.
+    for base in [
         f'{output_folder}',
         f'{output_folder}/{run_id}',
         f'{output_folder}/{run_id}/log',
@@ -98,24 +106,18 @@ def prepare_output(run_id: str, output_folder: str = '../../output', overwrite: 
         f'{output_folder}/{run_id}/policies/metadata',
         f'{output_folder}/{run_id}/policies/html',
         f'{output_folder}/{run_id}/policies/cleaned',
-        f'{output_folder}/{run_id}/policies/detected',
-        f'{output_folder}/{run_id}/policies/classified',
         f'{output_folder}/{run_id}/policies/detected/rejected',
         f'{output_folder}/{run_id}/policies/detected/unknown',
         f'{output_folder}/{run_id}/policies/json',
-        f'{output_folder}/{run_id}/policies/annotated-standalone',
-        f'{output_folder}/{run_id}/policies/annotated-twostep',
-        f'{output_folder}/{run_id}/policies/reviewed-standalone',
-        f'{output_folder}/{run_id}/policies/reviewed-twostep',
-        f'{output_folder}/{run_id}/batch',
+        f'{output_folder}/{run_id}/policies/classified',
+        f'{output_folder}/{run_id}/policies/annotated',
+        f'{output_folder}/{run_id}/policies/reviewed',
         f'{output_folder}/{run_id}/batch/detect',
         f'{output_folder}/{run_id}/batch/annotate',
         f'{output_folder}/{run_id}/batch/review'
-    ]
-
-    for path in path_list:
-        if not os.path.exists(path):
-            os.mkdir(path)
+    ]:
+        if not os.path.exists(base):
+            os.makedirs(base, exist_ok=True)
 
 
 def load_policy_json(file_path: str):
@@ -167,6 +169,9 @@ def write_jsonl_file(file_path: str, items: list):
         file_path (str): The path to the JSONL file to write.
         items (list): The list of items to write to the file.
     """
+    parent_dir = os.path.dirname(file_path)
+    if parent_dir and not os.path.exists(parent_dir):
+        os.makedirs(parent_dir, exist_ok=True)
     with open(file_path, 'w', encoding='utf-8') as file:
         for item in items:
             file.write(json.dumps(item) + '\n')

@@ -151,7 +151,7 @@ class TargetedAnnotator(PipelineStep):
 
         except Exception as e:
             await self.state_manager.raise_error(error_message=str(e))
-            util.write_to_file(f"../../output/{self.run_id}/log/failed_targeted_annotate.txt", pkg)
+            util.write_to_file(f"../output/{self.run_id}/log/failed_targeted_annotate.txt", pkg)
             return None
 
     async def prepare_batch(self, pkg: str):

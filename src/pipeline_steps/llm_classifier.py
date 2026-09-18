@@ -213,7 +213,7 @@ class LLMClassifier(PipelineStep):
 
         except Exception as e:
             await self.state_manager.raise_error(error_message=str(e))
-            util.write_to_file(f"../../output/{self.run_id}/log/failed_classify.txt", pkg)
+            util.write_to_file(f"../output/{self.run_id}/log/failed_classify.txt", pkg)
             return None
 
     async def prepare_batch(self, pkg: str):

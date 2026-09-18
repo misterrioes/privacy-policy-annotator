@@ -148,6 +148,15 @@ available_models = {
         'output_price': 0,
         'input_price_batch': 0,
         'output_price_batch': 0
+    },
+    'qwen3.6:35b': {
+        'name': 'qwen3.6:35b',
+        'api': 'ollama',
+        'encoding': 'o200k_base',
+        'input_price': 0,
+        'output_price': 0,
+        'input_price_batch': 0,
+        'output_price_batch': 0
     }
 }
 
@@ -164,6 +173,13 @@ class ApiOllama(ApiBase):
             default_model: str = None,
             use_opp_115: bool = False
     ):
+        # Support OLLAMA_REMOTE_TOKEN for SNET gateway authentication  
+        import os as _os
+        snet_token = _os.environ.get('OLLAMA_REMOTE_TOKEN', '')
+        if snet_token and not _os.environ.get('OLLAMA_API_KEY'):
+            # Temporarily set OLLAMA_API_KEY so parent class accepts it
+            _os.environ['OLLAMA_API_KEY'] = snet_token  # This will be replaced by proper token reading
+        
         super().__init__(
             run_id=run_id,
             models=available_models,
@@ -176,14 +192,64 @@ class ApiOllama(ApiBase):
             use_opp_115=use_opp_115
         )
 
-        # Configure headers with Bearer token if API key is available
-        headers = {}
+        headers = {}  # Initialize headers dict
+        
         if self.api_key:
-            headers['Authorization'] = f'Bearer {self.api_key}'
+            # Check if api_key already has Bearer prefix (common with SNET gateway)
+            if not self.api_key.startswith('Bearer '):
+                headers['Authorization'] = f'Bearer {self.api_key}'
+            else:
+                headers['Authorization'] = self.api_key
+        
+        # Check for OLLAMA_REMOTE_TOKEN (SNET gateway auth) as fallback
+        if not self.api_key:
+            import os
+            snet_token = os.environ.get('OLLAMA_REMOTE_TOKEN', '')
+            if snet_token and snet_token.startswith('Bearer '):
+                headers['Authorization'] = snet_token
 
         if hostname is not None:
-            self.client = ollama.Client(host=hostname, headers=headers)
-            self.async_client = AsyncClient(host=hostname, headers=headers)
+            # Ollama supports full URLs for remote servers (e.g., SNET gateways)
+            # Hostname can be:
+            #   - Full URL: https://gateway.snet.tu-berlin.de/echelon/ollama
+            #   - Short hostname: node01.snet.gateway.tu-berlin.de
+            #   - Local: localhost (uses default port 11434)
+            
+            if hostname.startswith('/'):
+                # This shouldn't happen from command line, but handle it gracefully
+                full_url = f'http://localhost:11434{hostname}'
+            elif 'snet.tu-berlin.de/echelon' in hostname.lower():
+                # Full SNET gateway URL provided by user (/gateway.snet.tu-berlin.de/echelon/ollama)
+                full_url = hostname.rstrip('/')
+            elif 'snet.tu-berlin.de' in hostname.lower() or 'snet.gateway.tu-berlin.de' in hostname.lower():
+                # SNET GPU gateway node - construct full URL with HTTPS on port 443
+                if hostname.startswith('http'):
+                    base = hostname.rstrip('/')
+                else:
+                    base = f'https://{hostname}'
+                
+                # Ensure path /echelon/ollama is present for SNET gateways
+                if '/echelon/ollama' not in base.lower():
+                    full_url = base.rstrip('/') + '/echelon/ollama'
+                else:
+                    full_url = base
+                
+                print(f'[Ollama] Connecting to SNET gateway: {full_url}')
+            elif hostname.startswith('http'):
+                # User provided a complete URL with protocol
+                full_url = hostname.rstrip('/')
+            else:
+                # Plain hostname, assume standard local Ollama port 11434
+                full_url = f'http://{hostname}:11434'
+            
+            print(f'[Ollama] Full URL: {full_url}')
+            if self.api_key:
+                print(f'[Ollama] Authentication: Bearer token present')
+            else:
+                print(f'[Ollama] Authentication: No Bearer token (set OLLAMA_API_KEY env var)')
+            
+            self.client = ollama.Client(host=full_url, headers=headers)
+            self.async_client = AsyncClient(host=full_url, headers=headers)
         else:
             self.client = ollama.Client(headers=headers)
             self.async_client = AsyncClient(headers=headers)
@@ -237,8 +303,9 @@ class ApiOllama(ApiBase):
         )
 
         output = response.message.content
-        input_len = response.prompt_eval_count
-        output_len = response.eval_count
+        # Handle None values from Ollama API
+        input_len = response.prompt_eval_count if response.prompt_eval_count is not None else 0
+        output_len = response.eval_count if response.eval_count is not None else 0
 
         return self._log_response(start_time, output, input_len, output_len, pkg, task, response_format)
 

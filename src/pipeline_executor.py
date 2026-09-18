@@ -149,6 +149,14 @@ class PipelineExecutor:
         # setup the pipeline steps (will only execute once, so we can call it as many times as we want)
         await self.setup()
 
+        # Ensure all expected output directories exist before processing starts.
+        # This handles the case where prior pipeline runs may have left folders in an inconsistent state,
+        # or when running with a new run_id but old data exists.
+        for step in self.pipeline_steps:
+            out = step.out_folder
+            if out and not os.path.exists(out):
+                os.makedirs(out, exist_ok=True)
+
         # iterate over the processing steps and execute the corresponding function for each package
         for step_index, step in enumerate([s for s in self.pipeline_steps if not s.skip]):
 
@@ -162,7 +170,9 @@ class PipelineExecutor:
                 step_details=step.details
             )
 
-            # List all files in the input folder
+            # List all files in the input folder (create it if needed so listdir doesn't fail)
+            if not os.path.exists(step.in_folder):
+                os.makedirs(step.in_folder, exist_ok=True)
             files = [f for f in os.listdir(step.in_folder) if
                      os.path.isfile(os.path.join(step.in_folder, f)) and not f.startswith('.')]
 

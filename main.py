@@ -217,8 +217,8 @@ def parse_args():
         if idx + 1 < len(sys.argv):
             hostname = sys.argv[idx + 1]
 
-    # parse the root directory from the command line argument "-root-dir"
-    root_dir = None
+    # parse the root directory from the command line argument "-root-dir" (default: ../output)
+    root_dir = "../output"
     if "-root-dir" in sys.argv:
         idx = sys.argv.index("-root-dir")
         if idx + 1 < len(sys.argv):
@@ -436,7 +436,11 @@ PERFORMANCE OPTIONS:
     -parallel-prompt            Enable parallel prompt processing
     -crawl-retries <num>        Number of crawl retries (default: 2)
     -hostname <hostname>        Specify hostname for processing
-    -root-dir <path>            Specify root directory for output (default: ../../output)
+                              • SNET gateway: https://gateway.snet.tu-berlin.de/echelon/ollama
+                                          (or any reserved GPU node URL)
+                              • Local Ollama: omit (default) or use 'localhost'
+                              • Custom Ollama server: http://host:port
+    -root-dir <path>            Specify root directory for output (default: ../output)
 
 HELP:
     --help, -h                  Show this help message

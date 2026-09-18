@@ -88,7 +88,7 @@ class MetadataCrawler(PipelineStep):
         except Exception as e:
             await self.state_manager.raise_error(error_message=str(e))
             # Create log directory if it doesn't exist
-            log_dir = f"../../output/{self.run_id}/log"
+            log_dir = f"../output/{self.run_id}/log"
             os.makedirs(log_dir, exist_ok=True)
             util.write_to_file(f"{log_dir}/failed_metadata_crawl.txt", pkg)
             return None

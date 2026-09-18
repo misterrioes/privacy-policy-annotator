@@ -234,13 +234,24 @@ class PolicyCrawler(PipelineStep):
             
             print(f"Fetching privacy policy for package {pkg}...")
             
-            # Read the metadata JSON file
-            metadata_file = f"{self.in_folder}/{pkg}.json"
-            if not os.path.exists(metadata_file):
-                raise FileNotFoundError(f"Metadata file not found: {metadata_file}")
+            # Read the metadata file (supports both .json and .jsonl formats)
+            metadata_file_json = f"{self.in_folder}/{pkg}.json"
+            metadata_file_jsonl = f"{self.in_folder}/{pkg}.jsonl"
             
-            with open(metadata_file, 'r') as f:
-                app_metadata = json.load(f)
+            if os.path.exists(metadata_file_json):
+                metadata_file = metadata_file_json
+            elif os.path.exists(metadata_file_jsonl):
+                metadata_file = metadata_file_jsonl
+            else:
+                raise FileNotFoundError(f"Metadata file not found: {metadata_file_json} or {metadata_file_jsonl}")
+            
+            with open(metadata_file, 'r', encoding='utf-8') as f:
+                # Handle .jsonl (JSON Lines) format - read first line
+                if metadata_file.endswith('.jsonl'):
+                    line = f.readline().strip()
+                    app_metadata = json.loads(line)
+                else:
+                    app_metadata = json.load(f)
             
             # Extract privacy policy URL from metadata
             privacy_policy_url = app_metadata.get('privacy_policy_url')
@@ -274,7 +285,7 @@ class PolicyCrawler(PipelineStep):
         except Exception as e:
             await self.state_manager.raise_error(error_message=str(e))
             # Create log directory if it doesn't exist
-            log_dir = f"../../output/{self.run_id}/log"
+            log_dir = f"../output/{self.run_id}/log"
             os.makedirs(log_dir, exist_ok=True)
             util.write_to_file(f"{log_dir}/failed_policy_crawl.txt", pkg)
             return None
